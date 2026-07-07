@@ -1,4 +1,4 @@
-console.log("Combat Oracle Ver.0.4 起動");
+console.log("Combat Oracle Ver.0.6 起動");
 
 document.addEventListener("DOMContentLoaded", () => {
 
@@ -14,31 +14,27 @@ document.addEventListener("DOMContentLoaded", () => {
 
   const firstCard = document.querySelector(".card");
 
-  if (!document.getElementById("heroPanel")) {
+  firstCard.insertAdjacentHTML("beforeend", `
 
-    firstCard.insertAdjacentHTML("beforeend", `
+    <hr>
 
-      <hr>
+    <h2>英雄選択</h2>
 
-      <h2>英雄選択</h2>
+    <select id="heroDefender"></select>
 
-      <select id="heroDefender"></select>
+    <select id="heroAttacker"></select>
 
-      <select id="heroAttacker"></select>
+    <select id="heroRanger"></select>
 
-      <select id="heroRanger"></select>
+    <label>
 
-      <label>
+      <input type="checkbox" id="rallyLeader">
 
-        <input type="checkbox" id="rallyLeader">
+      ラリーリーダーとして計算
 
-        ラリーリーダーとして計算
+    </label>
 
-      </label>
-
-    `);
-
-  }
+  `);
 
   function fillHeroSelect(id, role) {
 
@@ -58,139 +54,61 @@ document.addEventListener("DOMContentLoaded", () => {
 
   fillHeroSelect("heroRanger", "Ranger");
 
-  function round(n) {
-
-    return Math.round(n * 100) / 100;
-
-  }
-
-  function heroBonus(role) {
-
-    const idMap = {
-
-      Defender: "heroDefender",
-
-      Attacker: "heroAttacker",
-
-      Ranger: "heroRanger"
-
-    };
-
-    const selectedId = document.getElementById(idMap[role]).value;
-
-    const hero = HERO_DATA[role].find(h => h.id === selectedId);
-
-    if (!hero || hero.id === "none") return 0;
-
-    return hero.generation * 3;
-
-  }
-
-  function calcIndex(troop, role) {
-
-    const bonus = heroBonus(role);
-
-    const attack = troop.attack * (1 + bonus / 100);
-
-    const defense = troop.defense * (1 + bonus / 100);
-
-    const hp = troop.hp * (1 + bonus / 100);
-
-    const lethality = troop.lethality * (1 + bonus / 100);
-
-    return round(
-
-      attack * (1 + lethality / 100) +
-
-      defense * (1 + hp / 100)
-
-    );
-
-  }
-
   function render() {
 
-    const tier = Number(tierSelect.value || 11);
+    const sim = BattleEngine.simulate({
 
-    const enemyMode = enemySelect.value;
+      tier: Number(tierSelect.value || 11),
 
-    const isRallyLeader = document.getElementById("rallyLeader").checked;
+      enemyMode: enemySelect.value,
 
-    let allyTotal = 0;
+      rallyLeader: document.getElementById("rallyLeader").checked,
 
-    let enemyTotal = 0;
+      selectedHeroes: {
 
-    let html = "";
+        Defender: document.getElementById("heroDefender").value,
 
-    Object.keys(TROOP_DATA).forEach((roleKey) => {
+        Attacker: document.getElementById("heroAttacker").value,
 
-      const role = TROOP_DATA[roleKey];
-
-      const troop = role.tiers.find((t) => t.tier === tier);
-
-      if (!troop) return;
-
-      let allyIndex = calcIndex(troop, roleKey);
-
-      if (isRallyLeader) {
-
-        allyIndex = round(allyIndex * 1.08);
+        Ranger: document.getElementById("heroRanger").value
 
       }
 
-      const enemyIndex = enemyMode === "strong"
-
-        ? round(allyIndex * 2.85)
-
-        : allyIndex;
-
-      allyTotal += allyIndex;
-
-      enemyTotal += enemyIndex;
-
-      html += `
-
-        <div class="card">
-
-          <h2>${role.name} T${tier}</h2>
-
-          <p><b>${enemyIndex > allyIndex ? "敵優勢" : "味方優勢"}</b></p>
-
-          <p>
-
-            戦闘力 ${troop.power}<br>
-
-            攻撃 ${troop.attack}<br>
-
-            防御 ${troop.defense}<br>
-
-            体力 ${troop.hp}<br>
-
-            殺傷力(貫通力) ${troop.lethality}<br>
-
-            積載量 ${troop.load}
-
-          </p>
-
-          <p>味方指数 ${allyIndex} / 敵指数 ${enemyIndex}</p>
-
-        </div>
-
-      `;
-
     });
 
-    allyTotal = round(allyTotal);
+    result.textContent = sim.diff >= 0 ? "味方優勢" : "敵優勢";
 
-    enemyTotal = round(enemyTotal);
+    score.textContent = `味方指数 ${sim.allyTotal} / 敵指数 ${sim.enemyTotal} / 差分 ${sim.diff}`;
 
-    const diff = round(allyTotal - enemyTotal);
+    cards.innerHTML = sim.rows.map(row => `
 
-    result.textContent = diff >= 0 ? "味方優勢" : "敵優勢";
+      <div class="card">
 
-    score.textContent = `味方指数 ${allyTotal} / 敵指数 ${enemyTotal} / 差分 ${diff}`;
+        <h2>${row.roleName} T${row.tier}</h2>
 
-    cards.innerHTML = html;
+        <p><b>${row.result}</b></p>
+
+        <p>
+
+          戦闘力 ${row.troop.power}<br>
+
+          攻撃 ${row.troop.attack}<br>
+
+          防御 ${row.troop.defense}<br>
+
+          体力 ${row.troop.hp}<br>
+
+          殺傷力(貫通力) ${row.troop.lethality}<br>
+
+          積載量 ${row.troop.load}
+
+        </p>
+
+        <p>味方指数 ${row.allyIndex} / 敵指数 ${row.enemyIndex}</p>
+
+      </div>
+
+    `).join("");
 
   }
 

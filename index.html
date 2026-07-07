@@ -1,0 +1,33 @@
+<!doctype html><html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Combat Oracle</title><style>
+
+body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:#eef2ff;color:#111827}header{background:#111827;color:white;padding:24px}h1{margin:0;font-size:30px}.card{background:white;margin:14px;padding:16px;border-radius:18px;box-shadow:0 6px 20px #0001}button,select{font-size:16px;padding:12px;border-radius:12px;border:1px solid #ddd;margin:6px 0;width:100%}.main{font-size:26px;font-weight:900}.warn{background:#fffbeb;color:#92400e;padding:10px;border-radius:12px}.grid{display:grid;gap:12px}@media(min-width:700px){.grid{grid-template-columns:1fr 1fr 1fr}}
+
+</style></head><body><header><h1>Combat Oracle</h1><p>Biohazard Survival Unit 戦闘解析 Alpha</p></header>
+
+<div class="card"><h2>シミュレーション</h2><select id="enemy"><option value="strong">強敵想定</option><option value="equal">同格想定</option></select><select id="tier"></select><button onclick="calc()">計算する</button></div>
+
+<div class="card"><h2>結果</h2><div id="result" class="main">未計算</div><p id="score"></p><div class="warn">現在はAlpha暫定指数です。正式勝率・正確な損害数ではありません。</div></div>
+
+<div id="cards" class="grid"></div>
+
+<script>
+
+const data={Defender:["ディフェンダー",[[1,1,5,6,1],[2,2,6,7,2],[3,3,7,11,3],[4,4,10,12,4],[5,8,11,13,7],[6,9,12,14,8],[7,10,14,15,9],[8,11,15,16,10],[9,12,16,17,11],[10,13,17,18,12],[11,15,18,20,14]]],Attacker:["アタッカー",[[1,5,2,2,5],[2,6,3,3,6],[3,7,4,4,11],[4,11,5,5,12],[5,12,9,8,13],[6,13,10,9,14],[7,15,11,10,15],[8,16,12,11,16],[9,17,13,12,17],[10,18,14,13,18],[11,20,16,15,20]]],Ranger:["レンジャー",[[1,6,1,1,6],[2,7,2,2,7],[3,10,3,3,11],[4,11,4,4,12],[5,12,8,8,13],[6,13,9,9,14],[7,15,10,10,15],[8,16,11,11,16],[9,17,12,12,17],[10,18,13,13,18],[11,20,15,15,20]]]};
+
+const ally={all:[48.25,48.25,48.25,34.25],Defender:[94.75,86.75,67.25,87.25],Attacker:[72.75,72.75,62.5,82.25],Ranger:[81.25,72.75,67.25,82.25]};
+
+const strong={all:[100,100,100,100],Defender:[300,300,250,250],Attacker:[300,300,250,250],Ranger:[300,300,250,250]};
+
+tier.innerHTML=[...Array(11)].map((_,i)=>`<option value="${i+1}" ${i==10?'selected':''}>T${i+1}</option>`).join('');
+
+function round(n){return Math.round(n*100)/100}
+
+function apply(r,b,role){let x=b[role],a=b.all;return{atk:round(r[1]*(1+(a[0]+x[0])/100)),def:round(r[2]*(1+(a[1]+x[1])/100)),hp:round(r[3]*(1+(a[2]+x[2])/100)),leth:round(r[4]*(1+(a[3]+x[3])/100))}}
+
+function idx(s){return round(s.atk*(1+s.leth/100)+s.def*(1+s.hp/100))}
+
+function calc(){let t=+tier.value,eb=enemy.value==="equal"?ally:strong,at=0,et=0,html="";for(let role of Object.keys(data)){let jp=data[role][0],row=data[role][1].find(x=>x[0]==t),a=apply(row,ally,role),e=apply(row,eb,role),ai=idx(a),ei=idx(e);at+=ai;et+=ei;html+=`<div class="card"><h2>${jp} T${t}</h2><b>${ai>ei?'味方優勢':ei>ai?'敵優勢':'拮抗'}</b><p>味方指数 ${ai}<br>攻撃 ${a.atk} 防御 ${a.def}<br>体力 ${a.hp} 殺傷力(貫通力) ${a.leth}</p><p>敵指数 ${ei}<br>攻撃 ${e.atk} 防御 ${e.def}<br>体力 ${e.hp} 殺傷力(貫通力) ${e.leth}</p></div>`}at=round(at);et=round(et);let d=round(at-et);result.textContent=d>0?'味方優勢':d<0?'敵優勢':'拮抗';score.textContent=`味方指数 ${at} / 敵指数 ${et} / 差分 ${d}`;cards.innerHTML=html}
+
+calc();
+
+</script></body></html>

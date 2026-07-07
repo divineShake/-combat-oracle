@@ -1,4 +1,4 @@
-console.log("Combat Oracle Ver.0.3 起動");
+console.log("Combat Oracle Ver.0.4 起動");
 
 document.addEventListener("DOMContentLoaded", () => {
 
@@ -12,19 +12,97 @@ document.addEventListener("DOMContentLoaded", () => {
 
   const cards = document.getElementById("cards");
 
+  const firstCard = document.querySelector(".card");
+
+  if (!document.getElementById("heroPanel")) {
+
+    firstCard.insertAdjacentHTML("beforeend", `
+
+      <hr>
+
+      <h2>英雄選択</h2>
+
+      <select id="heroDefender"></select>
+
+      <select id="heroAttacker"></select>
+
+      <select id="heroRanger"></select>
+
+      <label>
+
+        <input type="checkbox" id="rallyLeader">
+
+        ラリーリーダーとして計算
+
+      </label>
+
+    `);
+
+  }
+
+  function fillHeroSelect(id, role) {
+
+    const select = document.getElementById(id);
+
+    select.innerHTML = HERO_DATA[role]
+
+      .map(h => `<option value="${h.id}">${h.name} / 第${h.generation}世代</option>`)
+
+      .join("");
+
+  }
+
+  fillHeroSelect("heroDefender", "Defender");
+
+  fillHeroSelect("heroAttacker", "Attacker");
+
+  fillHeroSelect("heroRanger", "Ranger");
+
   function round(n) {
 
     return Math.round(n * 100) / 100;
 
   }
 
-  function calcIndex(troop) {
+  function heroBonus(role) {
+
+    const idMap = {
+
+      Defender: "heroDefender",
+
+      Attacker: "heroAttacker",
+
+      Ranger: "heroRanger"
+
+    };
+
+    const selectedId = document.getElementById(idMap[role]).value;
+
+    const hero = HERO_DATA[role].find(h => h.id === selectedId);
+
+    if (!hero || hero.id === "none") return 0;
+
+    return hero.generation * 3;
+
+  }
+
+  function calcIndex(troop, role) {
+
+    const bonus = heroBonus(role);
+
+    const attack = troop.attack * (1 + bonus / 100);
+
+    const defense = troop.defense * (1 + bonus / 100);
+
+    const hp = troop.hp * (1 + bonus / 100);
+
+    const lethality = troop.lethality * (1 + bonus / 100);
 
     return round(
 
-      troop.attack * (1 + troop.lethality / 100) +
+      attack * (1 + lethality / 100) +
 
-      troop.defense * (1 + troop.hp / 100)
+      defense * (1 + hp / 100)
 
     );
 
@@ -35,6 +113,8 @@ document.addEventListener("DOMContentLoaded", () => {
     const tier = Number(tierSelect.value || 11);
 
     const enemyMode = enemySelect.value;
+
+    const isRallyLeader = document.getElementById("rallyLeader").checked;
 
     let allyTotal = 0;
 
@@ -50,7 +130,13 @@ document.addEventListener("DOMContentLoaded", () => {
 
       if (!troop) return;
 
-      const allyIndex = calcIndex(troop);
+      let allyIndex = calcIndex(troop, roleKey);
+
+      if (isRallyLeader) {
+
+        allyIndex = round(allyIndex * 1.08);
+
+      }
 
       const enemyIndex = enemyMode === "strong"
 
@@ -108,9 +194,21 @@ document.addEventListener("DOMContentLoaded", () => {
 
   }
 
-  tierSelect.addEventListener("change", render);
+  [
 
-  enemySelect.addEventListener("change", render);
+    tierSelect,
+
+    enemySelect,
+
+    document.getElementById("heroDefender"),
+
+    document.getElementById("heroAttacker"),
+
+    document.getElementById("heroRanger"),
+
+    document.getElementById("rallyLeader")
+
+  ].forEach(el => el.addEventListener("change", render));
 
   window.calc = render;
 
